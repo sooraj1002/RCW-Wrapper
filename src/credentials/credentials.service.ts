@@ -1,79 +1,169 @@
-import { HttpService } from '@nestjs/axios';
 import {
+  BadRequestException,
   Injectable,
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
-import { AxiosResponse } from 'axios';
+import axios from 'axios';
+import { ConfigService } from '../config/config.service';
 
 @Injectable()
 export class CredentialsService {
-  private logger;
-  constructor(private readonly httpService: HttpService) {
-    this.logger = new Logger('CredentialsService');
+  private logger: Logger;
+  private readonly configService: ConfigService;
+  private credentialServiceURL: string;
+
+  constructor(configService: ConfigService) {
+    this.logger = new Logger('Credentials Service');
+    this.configService = configService;
+    this.credentialServiceURL = this.configService.getCredentialsServiceURL();
   }
 
-  async createCredentialSchema(
-    author: string,
-    version: string,
-    schema: object,
+  async getCredentials(
+    tags: string,
+    page: string,
+    limit: string,
+  ): Promise<any> {
+    console.log('this is get credentials method and the value of the link is:');
+    console.log(this.credentialServiceURL);
+    try {
+      const response = await axios.get(this.credentialServiceURL, {
+        params: {
+          tags: tags.split(','),
+          page: isNaN(parseInt(page)) ? 1 : parseInt(page),
+          limit: isNaN(parseInt(limit)) ? 10 : parseInt(limit),
+        },
+      });
+      return response.data;
+    } catch (error) {
+      this.logger.error('Error while fetching credentials', error);
+      throw new InternalServerErrorException('Could not fetch credentials');
+    }
+  }
+
+  async getCredentialsBySubject(
+    subject_id: string,
+    page: string,
+    limit: string,
   ) {
     try {
-      const schemaResp: AxiosResponse = await this.httpService.post(
-        `${process.env.CREDENTIALS_SERVICE_URL}/credential-schema`,
+      const response = await axios.post(
+        `${this.credentialServiceURL}/search`,
+        subject_id,
         {
-          schema: {
-            type: 'https://w3c-ccg.github.io/vc-json-schemas/',
-            name: 'Proof of Academic Evaluation Credential',
-            version: version,
-            author: author,
-            authored: new Date().toISOString(),
-            schema: {
-              $id: 'Proof-of-Academic-Evaluation-Credential-1.0',
-              $schema: 'https://json-schema.org/draft/2019-09/schema',
-              description:
-                'The holder has secured the <PERCENTAGE/GRADE> in <PROGRAMME> from <ABC_Institute>.',
-              type: 'object',
-              properties: {
-                id: {
-                  type: 'string',
-                },
-                grade: {
-                  type: 'string',
-                  description: 'Grade (%age, GPA, etc.) secured by the holder.',
-                },
-                programme: {
-                  type: 'string',
-                  description: 'Name of the programme pursed by the holder.',
-                },
-                certifyingInstitute: {
-                  type: 'string',
-                  description:
-                    'Name of the instute which certified the said grade in the said skill',
-                },
-                evaluatingInstitute: {
-                  type: 'string',
-                  description:
-                    'Name of the institute which ran the programme and evaluated the holder.',
-                },
-              },
-              required: [
-                'grade',
-                'programme',
-                'certifyingInstitute',
-                'evaluatingInstitute',
-              ],
-              additionalProperties: true,
-            },
-          },
-          tags: ['tag1', 'tag2'],
-          status: 'DRAFT',
+          params: { page, limit },
         },
       );
-      return schemaResp.data;
-    } catch (err) {
-      this.logger.error('Error while creating schema', err);
-      throw new InternalServerErrorException('Error while creating schema');
+      return response.data;
+    } catch (error) {
+      this.logger.error('Error while getting credentials by subject', error);
+      throw new InternalServerErrorException(
+        'Could not get credentials by subject',
+      );
+    }
+  }
+
+  async getCredentialsById(
+    id: string,
+    templateId: string | undefined,
+    acceptHeader: string | null,
+  ): Promise<any> {
+    if (acceptHeader == null) {
+      acceptHeader = 'application/json';
+    }
+
+    try {
+      if (!templateId && acceptHeader !== 'application/json') {
+        throw new BadRequestException('Template id is required');
+      }
+
+      const link = this.credentialServiceURL + id;
+      const response = await axios.get(link, {
+        headers: {
+          Accept: acceptHeader,
+          templateid: templateId || '',
+        },
+      });
+
+      if (response.status === 200) {
+        return response.data;
+      } else if (response.status === 400) {
+        throw new BadRequestException('Bad request');
+      } else {
+        throw new InternalServerErrorException('Internal server error');
+      }
+    } catch (error) {
+      console.error('Error while fetching credential by ID', error);
+      throw new InternalServerErrorException(
+        'Could not fetch credential by ID',
+      );
+    }
+  }
+
+  async issueCredentials(issueRequest: LocalIssueCredentialDTO) {
+    try {
+      const response = await axios.post(
+        `${this.credentialServiceURL}/issue`,
+        issueRequest,
+      );
+      return response.data;
+    } catch (error) {
+      this.logger.error('Error in issuing credential', error);
+      throw new InternalServerErrorException('Could not issue credential');
+    }
+  }
+
+  async deleteCredential(id: string) {
+    try {
+      const url = `${this.credentialServiceURL}/${id}`;
+      const response = await axios.delete(url);
+      return response.data;
+    } catch (error) {
+      this.logger.error('Error in deleting credential', error);
+      throw new InternalServerErrorException('Could not delete credential');
+    }
+  }
+
+  async verifyCredential(credId: string) {
+    try {
+      const url = `${process.env.CREDENTIALS_SERVICE_URL}/${credId}/verify`;
+
+      const response = await axios.get(url);
+      return response.data;
+    } catch (error) {
+      throw error;
     }
   }
 }
+
+interface LocalIssueCredentialDTO {
+  credential: any;
+  credentialSchemaId: string;
+  credentialSchemaVersion: string;
+  tags: string[];
+  method?: string;
+}
+
+interface CredentialsServiceAPI {
+  getCredentials(tags: string, page: string, limit: string): Promise<any>;
+
+  getCredentialsBySubject(
+    subject_id: string,
+    page: string,
+    limit: string,
+  ): Promise<any>;
+
+  getCredentialsById(
+    id: string,
+    templateId: string | undefined,
+    acceptHeader: string | null,
+  ): Promise<any>;
+
+  issueCredentials(issueRequest: LocalIssueCredentialDTO): Promise<any>;
+
+  deleteCredential(id: string): Promise<any>;
+
+  verifyCredential(credId: string): Promise<any>;
+}
+
+export { CredentialsServiceAPI };

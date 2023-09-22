@@ -1,10 +1,10 @@
 {
   "name": "rcw-wrapper",
-  "version": "0.0.1",
+  "version": "1.0.7",
   "description": "",
-  "author": "",
-  "private": true,
+  "author": "Sooraj,Yash Mittal",
   "license": "UNLICENSED",
+  "main": "dist/index.js",
   "scripts": {
     "dev": "nest start --watch",
     "build": "nest build",

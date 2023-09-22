@@ -7,10 +7,20 @@ import { PrismaService } from './prisma.service';
 import { IdentityService } from './identity/identity.service';
 import { SchemaService } from './schema/schema.service';
 import { CredentialsService } from './credentials/credentials.service';
+import { HttpModule } from '@nestjs/axios';
+import { ConfigService } from './config/config.service';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, HttpModule],
   controllers: [AppController],
-  providers: [AppService, AuthService, PrismaService, IdentityService, SchemaService, CredentialsService],
+  providers: [
+    AppService,
+    AuthService,
+    PrismaService,
+    IdentityService,
+    SchemaService,
+    CredentialsService,
+    ConfigService,
+  ],
 })
 export class AppModule {}

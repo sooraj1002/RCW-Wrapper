@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { AxiosResponse } from 'axios';
 import { User } from 'src/types/entities';
+import { Observable } from 'rxjs';
 
 @Injectable()
 export class IdentityService {
@@ -14,9 +15,9 @@ export class IdentityService {
     this.logger = new Logger('IdentityService');
   }
 
-  async createDID(user: User) {
+  createDID(user: User): Observable<AxiosResponse> {
     try {
-      const didResp: AxiosResponse = await this.httpService.post(
+      return this.httpService.post(
         `${process.env.IDENTITY_SERVICE_URL}/did/generate`,
         {
           content: [
