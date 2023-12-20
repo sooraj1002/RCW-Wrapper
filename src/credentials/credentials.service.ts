@@ -5,18 +5,20 @@ import {
   Logger,
 } from '@nestjs/common';
 import axios from 'axios';
-import { ConfigService } from '../config/config.service';
 
 @Injectable()
 export class CredentialsService {
   private logger: Logger;
-  private readonly configService: ConfigService;
-  private credentialServiceURL: string;
+  private credentialServiceURL: string | undefined;
 
-  constructor(configService: ConfigService) {
+  constructor() {
     this.logger = new Logger('Credentials Service');
-    this.configService = configService;
-    this.credentialServiceURL = this.configService.getCredentialsServiceURL();
+  }
+
+  setCredentialsServiceURL(url: string) {
+    this.credentialServiceURL = url;
+    console.log('set the credential successfully, the credential is:');
+    console.log(this.credentialServiceURL);
   }
 
   async getCredentials(
@@ -126,7 +128,7 @@ export class CredentialsService {
 
   async verifyCredential(credId: string) {
     try {
-      const url = `${process.env.CREDENTIALS_SERVICE_URL}/${credId}/verify`;
+      const url = `${this.credentialServiceURL}/${credId}/verify`;
 
       const response = await axios.get(url);
       return response.data;
@@ -145,6 +147,8 @@ interface LocalIssueCredentialDTO {
 }
 
 interface CredentialsServiceAPI {
+  setCredentialsServiceURL(url: string);
+
   getCredentials(tags: string, page: string, limit: string): Promise<any>;
 
   getCredentialsBySubject(

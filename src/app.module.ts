@@ -5,10 +5,9 @@ import { AuthService } from './auth/auth.service';
 import { AuthModule } from './auth/auth.module';
 import { PrismaService } from './prisma.service';
 import { IdentityService } from './identity/identity.service';
-import { SchemaService } from './schema/schema.service';
+// import { SchemaService } from './schema/schema.service';
 import { CredentialsService } from './credentials/credentials.service';
 import { HttpModule } from '@nestjs/axios';
-import { ConfigService } from './config/config.service';
 
 @Module({
   imports: [AuthModule, HttpModule],
@@ -18,9 +17,8 @@ import { ConfigService } from './config/config.service';
     AuthService,
     PrismaService,
     IdentityService,
-    SchemaService,
+    // SchemaService,
     CredentialsService,
-    ConfigService,
   ],
 })
 export class AppModule {}
